@@ -1,0 +1,25 @@
+﻿kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: zuul
+  namespace: dmandry
+  labels:
+    app: zuul
+    app.kubernetes.io/component: zuul
+    app.kubernetes.io/instance: zuul
+    app.kubernetes.io/name: ''
+    app.kubernetes.io/part-of: zuul
+    app.openshift.io/runtime: ''
+    app.openshift.io/runtime-version: latest
+spec:
+  host: zuul-dmandry.apps.ca-central-1.starter.openshift-online.com
+  to:
+    kind: Service
+    name: zuul
+    weight: 100
+  port:
+    targetPort: 9000-tcp
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

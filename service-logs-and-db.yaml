@@ -1,0 +1,28 @@
+﻿kind: Service
+apiVersion: v1
+metadata:
+  name: logs-and-db
+  namespace: dmandry
+  labels:
+    app: logs-and-db
+    app.kubernetes.io/component: logs-and-db
+    app.kubernetes.io/instance: logs-and-db
+    app.kubernetes.io/name: ''
+    app.kubernetes.io/part-of: zuul
+    app.openshift.io/runtime: ''
+    app.openshift.io/runtime-version: latest
+spec:
+  ports:
+    - name: 3306-tcp
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+    - name: 8080-tcp
+      protocol: TCP
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: logs-and-db
+    deploymentconfig: logs-and-db
+  type: ClusterIP
+  sessionAffinity: None

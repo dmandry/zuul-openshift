@@ -1,0 +1,28 @@
+﻿kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: nodepool
+  namespace: dmandry
+data:
+  nodepool.yaml: |-
+    zookeeper-servers:
+      - host: zuul
+        port: 2281
+    zookeeper-tls:
+      cert: /var/certs/client.pem
+      key: /var/certs/clientkey.pem
+      ca: /var/certs/cacert.pem
+
+    labels:
+      - name: ubuntu-bionic
+
+    providers:
+      - name: dmandry
+        driver: openshiftpods
+        context: secret
+        pools:
+          - name: dmandry
+            labels:
+              - name: ubuntu-bionic
+                image: python:alpine
+                memory: 256

@@ -1,0 +1,25 @@
+﻿kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: logs
+  namespace: dmandry
+  labels:
+    app: logs-and-db
+    app.kubernetes.io/component: logs-and-db
+    app.kubernetes.io/instance: logs-and-db
+    app.kubernetes.io/name: ''
+    app.kubernetes.io/part-of: zuul
+    app.openshift.io/runtime: ''
+    app.openshift.io/runtime-version: latest
+spec:
+  host: logs-dmandry.apps.ca-central-1.starter.openshift-online.com
+  to:
+    kind: Service
+    name: logs-and-db
+    weight: 100
+  port:
+    targetPort: 8080-tcp
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

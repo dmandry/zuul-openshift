@@ -1,0 +1,198 @@
+﻿kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: zuul
+  namespace: dmandry
+  labels:
+    app: zuul
+    app.kubernetes.io/component: zuul
+    app.kubernetes.io/instance: zuul
+    app.kubernetes.io/part-of: zuul
+spec:
+  strategy:
+    type: Recreate
+    recreateParams:
+      timeoutSeconds: 600
+    resources: {}
+    activeDeadlineSeconds: 21600
+  triggers:
+    - type: ConfigChange
+  replicas: 1
+  revisionHistoryLimit: 10
+  test: false
+  selector:
+    app: zuul
+    deploymentconfig: zuul
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: zuul
+        deploymentconfig: zuul
+      annotations:
+        openshift.io/generated-by: OpenShiftWebConsole
+    spec:
+      volumes:
+        - name: zuul-scheduler-1
+          emptyDir: {}
+        - name: zuul-web-1
+          emptyDir: {}
+        - name: zuul
+          configMap:
+            name: zuul
+            defaultMode: 420
+        - name: certs
+          secret:
+            secretName: certs
+            defaultMode: 420
+        - name: gerrit-ssh-key
+          secret:
+            secretName: gerrit-ssh-key
+            defaultMode: 420
+        - name: zookeeper-1
+          emptyDir: {}
+        - name: zookeeper-2
+          emptyDir: {}
+        - name: zookeeper-3
+          emptyDir: {}
+        - name: zookeeper
+          configMap:
+            name: zookeeper
+            defaultMode: 420
+        - name: nodepool
+          configMap:
+            name: nodepool
+            defaultMode: 420
+        - name: kube-config
+          secret:
+            secretName: kube-config
+            defaultMode: 420
+        - name: zuul-executor-1
+          emptyDir: {}
+      containers:
+        - name: zuul-scheduler
+          image: zuul/zuul-scheduler
+          ports:
+            - containerPort: 4730
+              protocol: TCP
+          resources:
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: zuul-scheduler-1
+              mountPath: /var/lib/zuul
+            - name: zuul
+              mountPath: /etc/zuul
+            - name: certs
+              mountPath: /var/certs
+            - name: gerrit-ssh-key
+              mountPath: /var/ssh
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+        - resources:
+            limits:
+              memory: 100Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9000
+              scheme: HTTP
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: zuul-web
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: zuul-web-1
+              mountPath: /var/lib/zuul
+            - name: zuul
+              mountPath: /etc/zuul
+            - name: certs
+              mountPath: /var/certs
+          terminationMessagePolicy: File
+          image: zuul/zuul-web
+        - name: zookeeper
+          image: zookeeper
+          ports:
+            - containerPort: 2281
+              protocol: TCP
+            - containerPort: 2888
+              protocol: TCP
+            - containerPort: 3888
+              protocol: TCP
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            limits:
+              memory: 184Mi
+          volumeMounts:
+            - name: zookeeper-1
+              mountPath: /data
+            - name: zookeeper-2
+              mountPath: /datalog
+            - name: zookeeper-3
+              mountPath: /logs
+            - name: zookeeper
+              mountPath: /conf
+            - name: certs
+              mountPath: /var/certs
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+        - name: nodepool-launcher
+          image: zuul/nodepool-launcher
+          ports:
+            - containerPort: 8022
+              protocol: TCP
+          resources:
+            limits:
+              memory: 100Mi
+          volumeMounts:
+            - name: nodepool
+              mountPath: /etc/nodepool
+            - name: certs
+              mountPath: /var/certs
+            - name: kube-config
+              mountPath: /.kube
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+        - resources:
+            limits:
+              memory: 512Mi
+          terminationMessagePath: /dev/termination-log
+          name: zuul-executor
+          env:
+            - name: PATH
+              value: >-
+                /usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/lib/zuul/ansible/2.9/bin:/usr/local/lib/zuul/ansible/2.8/bin:/usr/local/lib/zuul/ansible/2.7/bin
+          ports:
+            - containerPort: 7900
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: zuul-executor-1
+              mountPath: /var/lib/zuul
+            - name: zuul
+              mountPath: /etc/zuul
+            - name: certs
+              mountPath: /var/certs
+            - name: gerrit-ssh-key
+              mountPath: /var/ssh
+            - name: kube-config
+              mountPath: /.kube
+          terminationMessagePolicy: File
+          image: dmandry/zuul-executor
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      hostname: zuul
+      schedulerName: default-scheduler

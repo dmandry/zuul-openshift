@@ -1,0 +1,95 @@
+﻿kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: logs-and-db
+  namespace: dmandry
+  labels:
+    app: logs-and-db
+    app.kubernetes.io/component: logs-and-db
+    app.kubernetes.io/instance: logs-and-db
+    app.kubernetes.io/part-of: zuul
+spec:
+  strategy:
+    type: Recreate
+    recreateParams:
+      timeoutSeconds: 600
+    resources: {}
+    activeDeadlineSeconds: 21600
+  triggers:
+    - type: ConfigChange
+  replicas: 1
+  revisionHistoryLimit: 10
+  test: false
+  selector:
+    app: logs-and-db
+    deploymentconfig: logs-and-db
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: logs-and-db
+        deploymentconfig: logs-and-db
+      annotations:
+        openshift.io/generated-by: OpenShiftWebConsole
+    spec:
+      volumes:
+        - name: logs-and-db
+          persistentVolumeClaim:
+            claimName: logs-and-db
+      containers:
+        - resources:
+            limits:
+              memory: 128Mi
+          terminationMessagePath: /dev/termination-log
+          name: mariadb
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: secret
+            - name: MYSQL_DATABASE
+              value: secret
+            - name: MYSQL_USER
+              value: secret
+            - name: MYSQL_PASSWORD
+              value: secret
+            - name: MYSQL_INITDB_SKIP_TZINFO
+              value: '1'
+          ports:
+            - containerPort: 3306
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: logs-and-db
+              mountPath: /var/lib/mysql
+              subPath: db
+          terminationMessagePolicy: File
+          image: rhscl/mariadb-102-rhel7
+        - resources:
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 15
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          terminationMessagePath: /dev/termination-log
+          name: httpd
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: logs-and-db
+              mountPath: /var/www/html
+              subPath: logs
+          terminationMessagePolicy: File
+          image: centos/httpd-24-centos7
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
